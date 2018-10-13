@@ -49,7 +49,11 @@ type wtype int
 const (
 	Gun    wtype = 0
 	Flames wtype = 1
+	Dual   wtype = 2
+	Circle wtype = 3
 )
+
+var weaponNum = 4
 
 // All the information needed for every entity.
 type entity struct {
@@ -198,6 +202,10 @@ func game() {
 				fireRate = 0.2
 			} else if weapon == Flames {
 				fireRate = 0.0
+			} else if weapon == Dual {
+				fireRate = 0.3
+			} else if weapon == Circle {
+				fireRate = 1
 			}
 
 			if time.Since(lastFire).Seconds() > fireRate {
@@ -238,11 +246,62 @@ func game() {
 						sprite: pixel.NewSprite(projectilePic, projectilePic.Bounds()),
 						alpha:  1,
 					})
+				} else if weapon == Dual {
+					projDx := -math.Sin(es[0].angle - 0.2)
+					projDy := math.Cos(es[0].angle - 0.2)
+
+					es = append(es, entity{
+						etype:  Projectile,
+						x:      es[0].x + es[0].radius*projDx,
+						y:      es[0].y + es[0].radius*projDy,
+						angle:  es[0].angle - 0.2,
+						dx:     500 * projDx,
+						dy:     500 * projDy,
+						dangle: 0.0,
+						radius: es[0].radius / 3,
+						sprite: pixel.NewSprite(projectilePic, projectilePic.Bounds()),
+						alpha:  1,
+					})
+
+					projDx = -math.Sin(es[0].angle + 0.2)
+					projDy = math.Cos(es[0].angle + 0.2)
+
+					es = append(es, entity{
+						etype:  Projectile,
+						x:      es[0].x + es[0].radius*projDx,
+						y:      es[0].y + es[0].radius*projDy,
+						angle:  es[0].angle + 0.2,
+						dx:     500 * projDx,
+						dy:     500 * projDy,
+						dangle: 0.0,
+						radius: es[0].radius / 3,
+						sprite: pixel.NewSprite(projectilePic, projectilePic.Bounds()),
+						alpha:  1,
+					})
+				} else if weapon == Circle {
+					var projDx, projDy float64
+					for i := 0.0; i < 2*math.Pi; i += math.Pi / 16 {
+						projDx = -math.Sin(i)
+						projDy = math.Cos(i)
+
+						es = append(es, entity{
+							etype:  Projectile,
+							x:      es[0].x + es[0].radius*projDx,
+							y:      es[0].y + es[0].radius*projDy,
+							angle:  rand.Float64() * 2 * math.Pi,
+							dx:     300 * projDx,
+							dy:     300 * projDy,
+							dangle: 20.0,
+							radius: es[0].radius / 3,
+							sprite: pixel.NewSprite(projectilePic, projectilePic.Bounds()),
+							alpha:  1,
+						})
+					}
 				}
 			}
 		}
 		if window.JustPressed(pixelgl.KeyLeftShift) || window.Pressed(pixelgl.KeyQ) {
-			weapon = (weapon - 1) % 2
+			weapon = (weapon + wtype(weaponNum) - 1) % wtype(weaponNum)
 			// Remove all existing projectiles, since they will change to the properties of the new weapon.
 			for i := 0; i < len(es); {
 				if es[i].etype == Projectile {
@@ -251,9 +310,10 @@ func game() {
 					i++
 				}
 			}
+			fmt.Println(weapon)
 		}
 		if window.JustPressed(pixelgl.KeyLeftControl) || window.Pressed(pixelgl.KeyE) {
-			weapon = (weapon + 1) % 2
+			weapon = (weapon + wtype(weaponNum) + 1) % wtype(weaponNum)
 			// Remove all existing projectiles, since they will change to the properties of the new weapon.
 			for i := 0; i < len(es); {
 				if es[i].etype == Projectile {
@@ -262,8 +322,9 @@ func game() {
 					i++
 				}
 			}
+			fmt.Println(weapon)
 		}
-		if window.JustPressed(pixelgl.KeyTab) {
+		if window.Pressed(pixelgl.KeyTab) {
 			e := entity{
 				etype:  Asteroid,
 				x:      rand.Float64() * screenWidth,
@@ -279,13 +340,22 @@ func game() {
 
 			es = append(es, e)
 		}
+		if window.JustPressed(pixelgl.KeyDelete) {
+			for i := 0; i < len(es); {
+				if es[i].etype == Asteroid {
+					es = append(es[:i], es[i+1:]...)
+				} else {
+					i++
+				}
+			}
+		}
 
 		// PROJECTILE MODIFICATION
 		for i := 0; i < len(es); {
 
 			removeI := false
 
-			if weapon == Flames && es[i].etype == Projectile {
+			if (weapon == Flames || weapon == Circle) && es[i].etype == Projectile {
 				es[i].radius += 0.5
 				es[i].alpha *= 0.95
 				if es[i].alpha <= 0.1 {
@@ -315,25 +385,36 @@ func game() {
 
 				if es[i].intersects(es[j]) {
 
-					if es[i].etype == Projectile && es[j].etype == Asteroid {
+					if es[i].etype == Projectile && es[j].etype == Asteroid || (i == 0 && es[j].etype == Asteroid && es[0].velocity() > 400) {
 
-						removeI = true
+						if es[i].etype == Projectile {
+							removeI = true
+						}
 
-						es[j].radius /= math.Sqrt2
+						if weapon != Flames || rand.Float64() < 0.1 {
+							es[j].radius /= math.Sqrt2
 
-						newAsteroids = append(newAsteroids, entity{
-							etype:  Asteroid,
-							x:      es[j].x,
-							y:      es[j].y,
-							angle:  es[j].angle,
-							dx:     -es[j].dx,
-							dy:     -es[j].dy,
-							dangle: -es[j].dangle,
-							radius: es[j].radius,
-							sprite: pixel.NewSprite(asteroidPic, asteroidPic.Bounds()),
-							alpha:  1,
-						})
+							newAsteroids = append(newAsteroids, entity{
+								etype:  Asteroid,
+								x:      es[j].x,
+								y:      es[j].y,
+								angle:  es[j].angle,
+								dx:     -es[j].dx,
+								dy:     -es[j].dy,
+								dangle: -es[j].dangle,
+								radius: es[j].radius,
+								sprite: pixel.NewSprite(asteroidPic, asteroidPic.Bounds()),
+								alpha:  1,
+							})
+						}
 
+					}
+
+					var modifier float64
+					if weapon == Flames && es[i].etype == Projectile && es[j].etype == Asteroid {
+						modifier = 0.3
+					} else {
+						modifier = 1
 					}
 
 					d := distance(es[i], es[j])
@@ -346,8 +427,8 @@ func game() {
 					es[i].dx = -v2 * unitX
 					es[i].dy = -v2 * unitY
 
-					es[j].dx = v1 * unitX
-					es[j].dy = v1 * unitY
+					es[j].dx = v1 * unitX * modifier
+					es[j].dy = v1 * unitY * modifier
 
 				}
 
