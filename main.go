@@ -19,51 +19,53 @@ const screenHeight = 768
 
 // Global variables.
 var (
-	windowTitlePrefix	= "Asteroids"
-	frames				= 0
-	second				= time.Tick(time.Second)
-	window				*pixelgl.Window
-	frameLength			float64
-	shipPic				pixel.Picture
-	asteroidPic			pixel.Picture
-	projectilePic		pixel.Picture
-	es					[]entity // short for entity slice
-	lastFire			= time.Now()
-	weapon				= Gun
+	windowTitlePrefix = "Asteroids"
+	frames            = 0
+	second            = time.Tick(time.Second)
+	window            *pixelgl.Window
+	frameLength       float64
+	shipPic           pixel.Picture
+	asteroidPic       pixel.Picture
+	projectilePic     pixel.Picture
+	es                []entity // short for entity slice
+	lastFire          = time.Now()
+	weapon            = Gun
 )
 
 /* ENTITY STRUCTURE */
 
 // We can refer to entity type by name rather than just a number for readability.
 type etype int
+
 const (
-	Ship etype = 0
-	Asteroid etype = 1
+	Ship       etype = 0
+	Asteroid   etype = 1
 	Projectile etype = 2
 )
 
 // Weapon type
 type wtype int
+
 const (
-	Gun wtype = 0
+	Gun    wtype = 0
 	Flames wtype = 1
 )
 
 // All the information needed for every entity.
 type entity struct {
 	etype
-	x, y, angle, dx, dy, dangle, radius float64
-	sprite *pixel.Sprite // * refers to a pointer to the sprite, not a copy.
+	x, y, angle, dx, dy, dangle, radius, alpha float64
+	sprite                                     *pixel.Sprite // * refers to a pointer to the sprite, not a copy.
 }
 
 /* FUNCTIONS */
 
 func distance(e1, e2 entity) float64 {
-	return math.Hypot(e2.x - e1.x, e2.y - e1.y)
+	return math.Hypot(e2.x-e1.x, e2.y-e1.y)
 }
 
 func (e1 entity) intersects(e2 entity) bool {
-	return math.Pow(e2.x - e1.x, 2) + math.Pow(e2.y - e1.y, 2) <= math.Pow(e2.radius + e1.radius, 2)
+	return math.Pow(e2.x-e1.x, 2)+math.Pow(e2.y-e1.y, 2) <= math.Pow(e2.radius+e1.radius, 2)
 }
 
 func (e entity) velocity() float64 {
@@ -90,8 +92,8 @@ func initiate() {
 
 	// Define the settings for the window.
 	cfg := pixelgl.WindowConfig{
-		Bounds:	pixel.R(0, 0, screenWidth, screenHeight),
-		VSync:	true, // Makes time between frames more even.
+		Bounds: pixel.R(0, 0, screenWidth, screenHeight),
+		VSync:  true, // Makes time between frames more even.
 	}
 
 	// Make the window.
@@ -122,15 +124,16 @@ func initiate() {
 	// Initiate entity slice by adding the ship.
 	es = []entity{
 		{
-			etype:	Ship,
-			x:		float64(screenWidth / 2),
-			y:		float64(screenHeight / 2),
-			angle:	0.0,
-			dx:		0,
-			dy:		0,
-			dangle:	0.0,
-			radius:	30,
-			sprite:	pixel.NewSprite(shipPic, shipPic.Bounds()),
+			etype:  Ship,
+			x:      float64(screenWidth / 2),
+			y:      float64(screenHeight / 2),
+			angle:  0.0,
+			dx:     0,
+			dy:     0,
+			dangle: 0.0,
+			radius: 30,
+			sprite: pixel.NewSprite(shipPic, shipPic.Bounds()),
+			alpha:  1,
 		},
 	}
 
@@ -138,15 +141,16 @@ func initiate() {
 
 	for i := 0; i < 20; i++ {
 		e := entity{
-			etype:	Asteroid,
-			x:		r.Float64() * screenWidth,
-			y:		r.Float64() * screenHeight,
-			angle:	r.Float64() * 2 * math.Pi,
-			dx:		r.Float64() * 100 - 50,
-			dy:		r.Float64() * 100 - 50,
-			dangle:	r.Float64() * 2 - 1,
-			radius:	r.Float64() * 20 + 20,
-			sprite:	pixel.NewSprite(asteroidPic, asteroidPic.Bounds()),
+			etype:  Asteroid,
+			x:      r.Float64() * screenWidth,
+			y:      r.Float64() * screenHeight,
+			angle:  r.Float64() * 2 * math.Pi,
+			dx:     r.Float64()*100 - 50,
+			dy:     r.Float64()*100 - 50,
+			dangle: r.Float64()*2 - 1,
+			radius: r.Float64()*20 + 20,
+			sprite: pixel.NewSprite(asteroidPic, asteroidPic.Bounds()),
+			alpha:  1,
 		}
 
 		es = append(es, e)
@@ -199,31 +203,101 @@ func game() {
 			if time.Since(lastFire).Seconds() > fireRate {
 				lastFire = time.Now()
 
-				projDx := -math.Sin(es[0].angle)
-				projDy := math.Cos(es[0].angle)
+				if weapon == Gun {
 
-				es = append(es, entity{
-					etype:	Projectile,
-					x:		es[0].x + es[0].radius*projDx,
-					y:		es[0].y + es[0].radius*projDy,
-					angle:	es[0].angle,
-					dx:		500 * projDx,
-					dy:		500 * projDy,
-					dangle:	0.0,
-					radius: es[0].radius/3,
-					sprite:	pixel.NewSprite(projectilePic, projectilePic.Bounds()),
-				})
+					projDx := -math.Sin(es[0].angle)
+					projDy := math.Cos(es[0].angle)
+
+					es = append(es, entity{
+						etype:  Projectile,
+						x:      es[0].x + es[0].radius*projDx,
+						y:      es[0].y + es[0].radius*projDy,
+						angle:  es[0].angle,
+						dx:     500 * projDx,
+						dy:     500 * projDy,
+						dangle: 0.0,
+						radius: es[0].radius / 3,
+						sprite: pixel.NewSprite(projectilePic, projectilePic.Bounds()),
+						alpha:  1,
+					})
+				} else if weapon == Flames {
+
+					vel := rand.Float64()*100 + 450
+					projDx := -math.Sin(es[0].angle + (rand.Float64()-0.5)*0.5)
+					projDy := math.Cos(es[0].angle + (rand.Float64()-0.5)*0.5)
+
+					es = append(es, entity{
+						etype:  Projectile,
+						x:      es[0].x + es[0].radius*projDx,
+						y:      es[0].y + es[0].radius*projDy,
+						angle:  rand.Float64() * math.Pi * 2,
+						dx:     vel * projDx,
+						dy:     vel * projDy,
+						dangle: rand.Float64() - 0.5,
+						radius: (rand.Float64() + 0.5) * es[0].radius / 3,
+						sprite: pixel.NewSprite(projectilePic, projectilePic.Bounds()),
+						alpha:  1,
+					})
+				}
 			}
 		}
 		if window.JustPressed(pixelgl.KeyLeftShift) || window.Pressed(pixelgl.KeyQ) {
 			weapon = (weapon - 1) % 2
-			fmt.Println(weapon)
-			fmt.Println("SWITCHED DOWN")
+			// Remove all existing projectiles, since they will change to the properties of the new weapon.
+			for i := 0; i < len(es); {
+				if es[i].etype == Projectile {
+					es = append(es[:i], es[i+1:]...)
+				} else {
+					i++
+				}
+			}
 		}
 		if window.JustPressed(pixelgl.KeyLeftControl) || window.Pressed(pixelgl.KeyE) {
 			weapon = (weapon + 1) % 2
-			fmt.Println(weapon)
-			fmt.Println("SWITCHED UP")
+			// Remove all existing projectiles, since they will change to the properties of the new weapon.
+			for i := 0; i < len(es); {
+				if es[i].etype == Projectile {
+					es = append(es[:i], es[i+1:]...)
+				} else {
+					i++
+				}
+			}
+		}
+		if window.JustPressed(pixelgl.KeyTab) {
+			e := entity{
+				etype:  Asteroid,
+				x:      rand.Float64() * screenWidth,
+				y:      rand.Float64() * screenHeight,
+				angle:  rand.Float64() * 2 * math.Pi,
+				dx:     rand.Float64()*100 - 50,
+				dy:     rand.Float64()*100 - 50,
+				dangle: rand.Float64()*2 - 1,
+				radius: rand.Float64()*20 + 20,
+				sprite: pixel.NewSprite(asteroidPic, asteroidPic.Bounds()),
+				alpha:  1,
+			}
+
+			es = append(es, e)
+		}
+
+		// PROJECTILE MODIFICATION
+		for i := 0; i < len(es); {
+
+			removeI := false
+
+			if weapon == Flames && es[i].etype == Projectile {
+				es[i].radius += 0.5
+				es[i].alpha *= 0.95
+				if es[i].alpha <= 0.1 {
+					removeI = true
+				}
+			}
+
+			if removeI {
+				es = append(es[:i], es[i+1:]...)
+			} else {
+				i++
+			}
 		}
 
 		// ENTITY COLLISION HANDLER
@@ -234,8 +308,8 @@ func game() {
 
 			for j := 1; j < len(es); j++ {
 
-				// If colliding with itself or a projectile colliding with ship or asteroid, ignore.
-				if i == j || es[j].etype == Projectile && (i == 0 || es[i].etype == Asteroid) {
+				// If colliding with itself or a projectile colliding with something, ignore.
+				if i == j || es[j].etype == Projectile && (i == 0 || es[i].etype == Asteroid || es[i].etype == Projectile) {
 					continue
 				}
 
@@ -248,22 +322,23 @@ func game() {
 						es[j].radius /= math.Sqrt2
 
 						newAsteroids = append(newAsteroids, entity{
-							etype:	Asteroid,
-							x:		es[j].x,
-							y:		es[j].y,
-							angle:	es[j].angle,
-							dx:		-es[j].dx,
-							dy:		-es[j].dy,
-							dangle:	-es[j].dangle,
-							radius:	es[j].radius,
-							sprite:	pixel.NewSprite(asteroidPic, asteroidPic.Bounds()),
+							etype:  Asteroid,
+							x:      es[j].x,
+							y:      es[j].y,
+							angle:  es[j].angle,
+							dx:     -es[j].dx,
+							dy:     -es[j].dy,
+							dangle: -es[j].dangle,
+							radius: es[j].radius,
+							sprite: pixel.NewSprite(asteroidPic, asteroidPic.Bounds()),
+							alpha:  1,
 						})
 
 					}
 
 					d := distance(es[i], es[j])
-					unitX := (es[j].x - es[i].x)/d
-					unitY := (es[j].y - es[i].y)/d
+					unitX := (es[j].x - es[i].x) / d
+					unitY := (es[j].y - es[i].y) / d
 
 					v1 := es[i].velocity()
 					v2 := es[j].velocity()
@@ -297,7 +372,6 @@ func game() {
 			}
 		}
 
-
 		// ENTITY POSITION UPDATE LOOP
 		for i := range es {
 
@@ -305,7 +379,7 @@ func game() {
 			if es[i].etype == Ship {
 				// If not accelerating reduce velocity.
 				if !window.Pressed(pixelgl.KeyUp) && !window.Pressed(pixelgl.KeyDown) && !window.Pressed(pixelgl.KeyW) &&
-					!window.Pressed(pixelgl.KeyA) && !window.Pressed(pixelgl.KeyS) && !window.Pressed(pixelgl.KeyD){
+					!window.Pressed(pixelgl.KeyA) && !window.Pressed(pixelgl.KeyS) && !window.Pressed(pixelgl.KeyD) {
 					es[i].dx *= 1 - frameLength
 					es[i].dy *= 1 - frameLength
 				}
@@ -326,10 +400,10 @@ func game() {
 			if es[i].y < -50 {
 				es[i].y += screenHeight + 100
 			}
-			if es[i].x > screenWidth + 50 {
+			if es[i].x > screenWidth+50 {
 				es[i].x -= screenWidth + 100
 			}
-			if es[i].y > screenHeight + 50 {
+			if es[i].y > screenHeight+50 {
 				es[i].y -= screenHeight + 100
 			}
 		}
@@ -339,12 +413,12 @@ func game() {
 		/* BEGIN DRAW LOOP */
 
 		for i := range es {
-			scale := 2*es[i].radius/((es[i].sprite.Picture().Bounds().W()+es[i].sprite.Picture().Bounds().H())/2)
+			scale := 2 * es[i].radius / ((es[i].sprite.Picture().Bounds().W() + es[i].sprite.Picture().Bounds().H()) / 2)
 			matrix := pixel.IM.
 				Rotated(pixel.ZV, es[i].angle).
 				Scaled(pixel.ZV, scale).
 				Moved(pixel.Vec{X: es[i].x, Y: es[i].y})
-			es[i].sprite.Draw(window, matrix)
+			es[i].sprite.DrawColorMask(window, matrix, pixel.Alpha(es[i].alpha))
 		}
 
 		/* END DRAW LOOP */
@@ -353,7 +427,7 @@ func game() {
 
 		frames++
 		select {
-		case <- second:
+		case <-second:
 			window.SetTitle(fmt.Sprintf("%s | FPS: %d", windowTitlePrefix, frames))
 			frames = 0
 		default:
